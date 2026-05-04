@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Jarvis}/macos/JarvisApp",
+            "name": "Debug JarvisApp (macos/JarvisApp)",
+            "target": "JarvisApp",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug JarvisApp (macos/JarvisApp)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Jarvis}/macos/JarvisApp",
+            "name": "Release JarvisApp (macos/JarvisApp)",
+            "target": "JarvisApp",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release JarvisApp (macos/JarvisApp)"
+        }
+    ]
+}
