@@ -4,6 +4,14 @@ Jarvis is a macOS AI assistant prototype that combines voice input/output, OCR, 
 
 The project is intentionally built as a prototype. Some workflows are reliable, while deeper UI automation and multi-step task execution are best-effort and depend on macOS permissions, the active application, and screen state.
 
+## Demo
+
+A short walkthrough video is available here:
+
+[![Project Jarvis Demo Video](https://img.youtube.com/vi/uISCi_UVRec/0.jpg)](https://youtu.be/uISCi_UVRec)
+
+This demo shows Jarvis running locally and demonstrates the assistant workflow, including voice interaction, OCR/document input, summarization, rewriting, and task-style AI responses.
+
 ## Why I Built It
 
 I built Jarvis to explore what an assistant-style AI system needs beyond a prompt box. The main goal was to combine:
