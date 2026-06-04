@@ -25,6 +25,9 @@ struct JarvisApp: App {
         NSApplication.shared.activate(ignoringOtherApps: true)
         registerHotkey()
         HUDOverlay.shared.show()
+        BackendManager.shared.ensureRunning {
+            VoiceSessionManager.shared.startContinuousListeningIfIdle()
+        }
     }
 
     var body: some Scene {

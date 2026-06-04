@@ -8,15 +8,31 @@ function getClient(): OpenAI {
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY is not set");
   }
-  return new OpenAI({ apiKey });
+  return new OpenAI({ apiKey, timeout: 12000, maxRetries: 1 });
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timeout: NodeJS.Timeout | undefined;
+  const timer = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+  try {
+    return await Promise.race([promise, timer]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 }
 
 export async function embedText(text: string): Promise<number[]> {
   const client = getClient();
-  const res = await client.embeddings.create({
-    model: "text-embedding-3-small",
-    input: text,
-  });
+  const res = await withTimeout(
+    client.embeddings.create({
+      model: "text-embedding-3-small",
+      input: text,
+    }),
+    12000,
+    "Embedding request"
+  );
   const embedding = res.data?.[0]?.embedding;
   if (!embedding) {
     throw new Error("No embedding returned");

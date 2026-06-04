@@ -51,12 +51,14 @@ final class JarvisClient: ObservableObject {
         let requestBody = JarvisQueryRequest(sessionId: sessionId, text: text, source: source)
         var request = URLRequest(url: baseURL.appendingPathComponent("/v0/query"))
         request.httpMethod = "POST"
+        request.timeoutInterval = 45
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
 
         do {
             request.httpBody = try encoder.encode(requestBody)
         } catch {
             await MainActor.run { self.appendError("Encoding error: \(error.localizedDescription)") }
+            await MainActor.run { self.resumeVoiceIfNeeded(source: source) }
             return
         }
 
@@ -64,27 +66,40 @@ final class JarvisClient: ObservableObject {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse else {
                 await MainActor.run { self.appendError("Invalid response") }
+                await MainActor.run { self.resumeVoiceIfNeeded(source: source) }
                 return
             }
             guard (200...299).contains(http.statusCode) else {
                 let body = String(data: data, encoding: .utf8) ?? ""
                 await MainActor.run { self.appendError("HTTP \(http.statusCode): \(body)") }
+                await MainActor.run { self.resumeVoiceIfNeeded(source: source) }
                 return
             }
             let jarvisResponse = try decoder.decode(JarvisQueryResponse.self, from: data)
             await MainActor.run {
                 self.messages.append(ChatMessage(role: .assistant, text: jarvisResponse.replyText))
             }
-            if let audioBase64 = jarvisResponse.ttsAudioBase64 {
+            let hasAudio = jarvisResponse.ttsAudioBase64?.isEmpty == false
+            print("[client] Response mode=\(jarvisResponse.mode), audio=\(hasAudio)")
+            if let audioBase64 = jarvisResponse.ttsAudioBase64, !audioBase64.isEmpty {
                 audioPlayer.play(base64: audioBase64)
+            } else {
+                await MainActor.run { self.resumeVoiceIfNeeded(source: source) }
             }
         } catch {
             await MainActor.run { self.appendError("Network error: \(error.localizedDescription)") }
+            await MainActor.run { self.resumeVoiceIfNeeded(source: source) }
         }
     }
 
     @MainActor
     private func appendError(_ message: String) {
         messages.append(ChatMessage(role: .assistant, text: "Error: \(message)"))
+    }
+
+    @MainActor
+    private func resumeVoiceIfNeeded(source: String) {
+        guard source == "voice" else { return }
+        VoiceSessionManager.shared.resumeAfterSilentResponseIfNeeded()
     }
 }

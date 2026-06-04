@@ -53,13 +53,25 @@ General style:
 
 let client: OpenAI | null = null;
 
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timeout: NodeJS.Timeout | undefined;
+  const timer = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+  try {
+    return await Promise.race([promise, timer]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
 function getClient(): OpenAI {
   if (!client) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       throw new Error("OPENAI_API_KEY is not set");
     }
-    client = new OpenAI({ apiKey });
+    client = new OpenAI({ apiKey, timeout: 15000, maxRetries: 1 });
   }
   return client;
 }
@@ -114,10 +126,15 @@ export async function generateAnswer(input: {
     { role: "user" as const, content: text },
   ].filter(Boolean) as { role: "system" | "user" | "assistant"; content: string }[];
 
-  const response = await getClient().chat.completions.create({
-    model: "gpt-4o-mini",
-    messages,
-  });
+  const response = await withTimeout(
+    getClient().chat.completions.create({
+      model: "gpt-4o-mini",
+      messages,
+      max_tokens: 220,
+    }),
+    15000,
+    "LLM request"
+  );
 
   let choice = response.choices?.[0]?.message?.content;
   if (!choice) {
@@ -151,10 +168,15 @@ export async function generateAnswer(input: {
       ...recentMessages.map((m) => ({ role: m.role, content: m.content })),
       { role: "user" as const, content: text },
     ];
-    const retry = await getClient().chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: retryMessages,
-    });
+    const retry = await withTimeout(
+      getClient().chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: retryMessages,
+        max_tokens: 120,
+      }),
+      15000,
+      "LLM retry"
+    );
     const retryChoice = retry.choices?.[0]?.message?.content;
     if (retryChoice) {
       choice = retryChoice.replace(closers, "").trim();
@@ -170,10 +192,15 @@ export async function generateAnswer(input: {
       ...recentMessages.map((m) => ({ role: m.role, content: m.content })),
       { role: "user" as const, content: text },
     ];
-    const retry = await getClient().chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: retryMessages,
-    });
+    const retry = await withTimeout(
+      getClient().chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: retryMessages,
+        max_tokens: 120,
+      }),
+      15000,
+      "LLM retry"
+    );
     const retryChoice = retry.choices?.[0]?.message?.content;
     if (retryChoice) {
       choice = retryChoice.replace(closers, "").trim();
