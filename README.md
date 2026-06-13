@@ -8,6 +8,14 @@ Jarvis is a desktop assistant experiment built to go beyond a normal chat interf
 
 This is intentionally a local prototype, not a deployed web app. Some workflows are reliable, while deeper browser/app automation is best-effort because it depends on macOS permissions, focused windows, app UI structure, and screen state.
 
+## Demo
+
+A short walkthrough video is available here:
+
+[![Project Jarvis Demo Video](https://img.youtube.com/vi/uISCi_UVRec/0.jpg)](https://youtu.be/uISCi_UVRec)
+
+This demo shows Jarvis running locally and demonstrates the assistant workflow, including voice interaction, OCR/document input, summarization, rewriting, and task-style AI responses.
+
 ## Why I Built It
 
 I built Jarvis to explore what an assistant-style AI system needs beyond a prompt box:
