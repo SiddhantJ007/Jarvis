@@ -2,8 +2,6 @@
 
 **Local-first macOS AI assistant prototype with voice I/O, OCR screen context, LLM reasoning, SQLite memory, and desktop automation.**
 
-> Demo video: **https://youtu.be/uISCi_UVRec**
-
 Jarvis is a desktop assistant experiment built to go beyond a normal chat interface. It can listen to voice commands, speak back, read text from the screen, summarize or rewrite content, manage a local agenda, and trigger practical macOS actions through a local backend.
 
 This is intentionally a local prototype, not a deployed web app. Some workflows are reliable, while deeper browser/app automation is best-effort because it depends on macOS permissions, focused windows, app UI structure, and screen state.
