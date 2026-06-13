@@ -1,77 +1,112 @@
 # Jarvis
 
-Jarvis is a macOS AI assistant prototype that combines voice input/output, OCR, local task tools, lightweight memory, and LLM reasoning. It is not just a chat window: it is an experiment in making an assistant that can listen, read what is on screen, summarize or rewrite text, and trigger practical actions on the computer.
+**Local-first macOS AI assistant prototype with voice I/O, OCR screen context, LLM reasoning, SQLite memory, and desktop automation.**
 
-The project is intentionally built as a prototype. Some workflows are reliable, while deeper UI automation and multi-step task execution are best-effort and depend on macOS permissions, the active application, and screen state.
+> Demo video: **[Add unlisted YouTube demo link here]**
+
+Jarvis is a desktop assistant experiment built to go beyond a normal chat interface. It can listen to voice commands, speak back, read text from the screen, summarize or rewrite content, manage a local agenda, and trigger practical macOS actions through a local backend.
+
+This is intentionally a local prototype, not a deployed web app. Some workflows are reliable, while deeper browser/app automation is best-effort because it depends on macOS permissions, focused windows, app UI structure, and screen state.
 
 ## Why I Built It
 
-I built Jarvis to explore what an assistant-style AI system needs beyond a prompt box. The main goal was to combine:
+I built Jarvis to explore what an assistant-style AI system needs beyond a prompt box:
 
-- messy human input, especially voice commands
-- deterministic local actions for things that should not be left to an LLM
-- LLM reasoning for summarization, rewriting, conversation, and intent interpretation
-- local state for agenda items, preferences, and short-term context
-- a minimal macOS interface that feels closer to an ambient assistant than a normal app
+- messy voice and text input from a real user
+- deterministic logic for local actions that should be predictable
+- LLM reasoning for summarization, rewriting, conversation, and flexible intent
+- local memory/state for agenda items, preferences, messages, and action logs
+- a lightweight macOS HUD instead of a traditional full-screen chat UI
 
-The project helped me test where LLMs are useful, where rule-based execution is safer, and where operating-system automation becomes fragile.
+The project became an exercise in deciding when to use AI and when not to. Opening an app, pressing a key, or updating an agenda item should be handled deterministically. Summarizing a screen, rewriting selected text, or carrying a discussion benefits from an LLM.
 
 ## Key Features
 
-- Voice input and spoken responses using OpenAI STT/TTS
-- macOS HUD overlay with listening/speaking/idle state
-- Open and quit local applications
+- Voice input with OpenAI speech-to-text
+- Spoken responses with OpenAI text-to-speech
+- Siri-like macOS HUD with listening/speaking/idle states
+- Open and quit local macOS applications
 - Open URLs and basic browser workflows
-- Best-effort clicking, scrolling, typing, copy, paste, and selection through macOS UI automation/OCR
-- Daily agenda with add, list, update, delete, move, and status workflows
+- Best-effort clicking, scrolling, typing, copy, paste, cut, and selection
+- OCR-based screen reading and screen summarization
+- Rewrite, polish, formalize, or improve selected/screen text
+- Daily agenda: add, read, update, delete, move, and mark items
 - Dictation mode for writing into apps like Notes or Word
-- Screen/text OCR and summarization
-- Rewrite, rephrase, polish, or formalize selected/screen text
 - Copy the latest Jarvis response to the clipboard
 - Current time, news, and weather workflows
-- Short conversational mode for questions, opinions, jokes, and facts
-- Local SQLite-backed message/action logging and lightweight memory/RAG hooks
+- Jokes, facts, and short conversational answers
+- Local SQLite-backed messages, actions, preferences, agenda, and memory hooks
 
-## Tech Stack
+## Architecture Overview
 
-- **macOS client:** Swift, SwiftUI, AppKit, AVFoundation
-- **Backend:** Node.js, TypeScript, Express
-- **Database:** SQLite via `better-sqlite3`
-- **AI APIs:** OpenAI chat completions, embeddings, speech-to-text, and text-to-speech
-- **Automation:** AppleScript, macOS System Events, shell commands, OCR/UI helpers
-- **Runtime:** npm scripts for backend, Swift Package Manager for the macOS app
+Jarvis is split into a Swift macOS app and a local TypeScript backend.
 
-## Architecture / Workflow Overview
+```text
+User voice/text/screen request
+  -> SwiftUI macOS app + HUD
+  -> local Express backend
+  -> STT / OCR / text normalization
+  -> deterministic command router and/or LLM reasoning
+  -> local tools: apps, agenda, clipboard, OCR, browser, files, weather/news
+  -> SQLite logging and memory/state
+  -> text response, optional TTS audio, HUD status update
+```
 
-Jarvis is split into a local backend and a macOS client.
-
-1. The Swift app captures text or voice input and shows status through the HUD.
-2. Voice recordings are sent to the local backend for transcription.
-3. The backend normalizes the request and decides whether it is a direct action, an LLM answer, or a mixed workflow.
-4. Deterministic tools handle local actions such as opening apps, managing agenda items, typing, pasting, reading screen text, or fetching weather/news.
-5. The LLM is used for flexible language understanding, summarization, rewriting, conversational answers, and context-aware responses.
-6. Results are logged locally, optionally converted to speech, and returned to the macOS app.
+The model does not directly control the computer. The backend decides whether a request should call a local tool, ask the LLM for language work, or combine both.
 
 More detail is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## How To Run Locally
+## Tech Stack
+
+- **macOS app:** Swift, SwiftUI, AppKit, AVFoundation
+- **Local backend:** Node.js, TypeScript, Express
+- **Database:** SQLite with `better-sqlite3`
+- **AI:** OpenAI chat completions, embeddings, Whisper STT, TTS
+- **Screen/OCR:** macOS screenshot capture and Apple Vision OCR
+- **Automation:** AppleScript, System Events, shell commands, Chrome remote debugging helpers
+- **Testing:** TypeScript build plus headless backend smoke test
+
+## Local Setup
 
 Prerequisites:
 
 - macOS
 - Node.js and npm
 - Xcode Command Line Tools / Swift toolchain
-- An OpenAI API key
-- macOS permissions for Microphone, Accessibility, Screen Recording, and Automation where needed
+- OpenAI API key
+- macOS permissions listed below
 
-Install backend dependencies from the repo root:
+Install and build the backend:
 
 ```bash
 npm install
 npm run build
 ```
 
-Create a local `.env` file in the repo root. You can start from `.env.example`. Do not commit the real `.env`.
+Create a local `.env` file from `.env.example`:
+
+```bash
+cp .env.example .env
+```
+
+Fill in the required local values. Do not commit `.env`.
+
+Start the backend:
+
+```bash
+npm start
+```
+
+Run the macOS app from another terminal:
+
+```bash
+cd macos/JarvisApp
+swift run
+```
+
+If the app logs a connection error for `http://127.0.0.1:3001`, the backend is not running or the port does not match.
+
+## Environment Variables
 
 ```env
 OPENAI_API_KEY=your_openai_api_key_here
@@ -85,34 +120,28 @@ TTS_DISABLED=0
 TTS_STUB=0
 ```
 
-Start the backend:
-
-```bash
-npm start
-```
-
-In another terminal, run the macOS app:
-
-```bash
-cd macos/JarvisApp
-swift run
-```
-
-If voice transcription fails with a connection error to `127.0.0.1:3001`, the backend is not running or is using a different port.
-
-## Environment Variables
-
-- `OPENAI_API_KEY`: required for LLM, embeddings, STT, and TTS features
-- `NEWS_API_KEY`: required for the NewsAPI headline workflow
-- `OPENWEATHER_API_KEY`: optional weather provider key; weather also has a no-key Open-Meteo fallback
+- `OPENAI_API_KEY`: required for LLM, embeddings, STT, and TTS
+- `NEWS_API_KEY`: optional, used for headline/news workflows
+- `OPENWEATHER_API_KEY`: optional, used when available for weather
 - `WEATHER_DEFAULT_CITY`: default city for weather requests
 - `PORT`: local backend port, defaults to `3001`
-- `JARVIS_BASE_DIR`: local directory for runtime data and SQLite database
-- `TTS_VOICE`: OpenAI TTS voice, default used in development was `onyx`
-- `TTS_DISABLED`: disables spoken output when set
-- `TTS_STUB`: returns stubbed TTS behavior for local testing
+- `JARVIS_BASE_DIR`: local runtime data directory
+- `TTS_VOICE`: OpenAI TTS voice; development default is `onyx`
+- `TTS_DISABLED`: disables spoken output when enabled
+- `TTS_STUB`: returns stubbed TTS output for tests/dev checks
 
-## Example Use Cases
+## Required macOS Permissions
+
+Jarvis may need these permissions depending on the command:
+
+- **Microphone:** voice input
+- **Accessibility:** clicking, typing, keyboard shortcuts, app control
+- **Screen Recording:** OCR and screen summarization
+- **Automation:** AppleScript/System Events control of apps
+
+These permissions are configured in macOS System Settings. Without them, voice, OCR, and UI automation may fail even if the backend is running.
+
+## Example Commands
 
 - "Open Microsoft Word."
 - "Click on Blank Document."
@@ -125,30 +154,52 @@ If voice transcription fails with a connection error to `127.0.0.1:3001`, the ba
 - "What is the weather?"
 - "Tell me a joke."
 - "What do you think about cricket versus baseball?"
+- "Sign off."
 
-## What I Learned
+## Testing
 
-- LLMs are strongest when used for interpretation, rewriting, summarization, and conversational reasoning.
-- Local actions need deterministic execution paths, clear logging, and defensive fallbacks.
-- Voice assistants need strong gating so they do not respond to their own TTS or background noise.
-- macOS automation works, but it is sensitive to permissions, focused windows, app-specific UI trees, and timing.
-- Memory is useful, but it needs careful boundaries so the assistant does not confuse stored tasks, prior chat, and current commands.
-- A polished assistant experience depends as much on silence, timing, and error handling as it does on model quality.
+The repository includes a lightweight backend smoke test that avoids microphone, OCR, Accessibility, and AppleScript UI automation.
+
+```bash
+npm run build
+npm run smoke
+```
+
+The smoke test is intended for CI-safe backend verification only. Full assistant behavior still requires manual macOS testing because the core experience depends on local permissions, active windows, microphone input, and screen state.
+
+## Privacy And Local-First Notes
+
+Jarvis runs as a local desktop prototype. API keys are loaded from local environment variables and should never be committed.
+
+Do not commit:
+
+- `.env`
+- local SQLite databases
+- `.jarvis-data/`
+- logs
+- recordings
+- screenshots
+- generated media
+- build artifacts
+
+Some commands may send text, voice audio, OCR output, selected text, or screen text to external APIs such as OpenAI, NewsAPI, OpenWeather, or Open-Meteo depending on the workflow. Review the code path before using private or sensitive information.
+
+## Limitations
+
+- Local prototype, not production software
+- Not a cloud-hosted app and not designed for web deployment
+- Desktop/browser automation is best-effort
+- Behavior is not guaranteed across all apps, websites, layouts, or permission states
+- Not production security, privacy, or compliance software
+- Multistep workflows exist but are intentionally limited and still being hardened
+- Voice reliability depends on microphone quality, background noise, and TTS/listening coordination
 
 ## Future Improvements
 
-- More reliable multi-step task execution with explicit step planning and per-step results
-- Stronger UI automation using accessibility trees before OCR fallback
+- Stronger multistep task planner with per-step confirmation and recovery
+- More reliable browser automation through structured page state where available
 - Better voice activity detection and speaker isolation
-- A cleaner onboarding flow for macOS permissions
-- More robust tests around agenda persistence, tool routing, and failure handling
-- Optional packaged app distribution instead of running through `swift run`
-- Clearer separation between prototype scripts, app code, and local runtime data
-
-## API Keys And Privacy
-
-This project uses local `.env` variables for API keys. Do not commit `.env` files, local databases, logs, recordings, screenshots, or generated build artifacts.
-
-Some workflows may send text, voice audio, OCR output, or selected/screen content to external APIs such as OpenAI, NewsAPI, OpenWeather, or Open-Meteo depending on the command. Treat this as a prototype and avoid using private or sensitive data unless you have reviewed the code path and API behavior.
-
-Local memory, messages, agenda items, and action logs are stored in a SQLite database under the configured Jarvis data directory.
+- First-run onboarding for macOS permissions
+- More pure-function tests around routing, agenda logic, and text transformations
+- Packaged macOS app distribution instead of running through `swift run`
+- Clearer separation between prototype tools, runtime data, and production-safe modules

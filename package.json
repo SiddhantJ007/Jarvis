@@ -7,6 +7,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
+    "test": "npm run build && npm run smoke",
     "smoke": "ts-node scripts/smoke.ts"
   },
   "dependencies": {

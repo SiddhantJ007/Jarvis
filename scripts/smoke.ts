@@ -5,7 +5,6 @@ import request from "supertest";
 import { createHttpServer } from "../src/api/http";
 import { AppConfig } from "../src/config/env";
 import { createDatabase } from "../src/db/sqlite";
-import { ToolDefinition, ToolRegistry } from "../src/tools/types";
 
 async function run() {
   const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), "jarvis-smoke-"));
@@ -19,23 +18,10 @@ async function run() {
 
   const db = createDatabase(config);
 
-  // Stub openApplication to avoid actually launching apps during smoke tests.
-  const stubOpenApplication: ToolDefinition = {
-    name: "openApplication",
-    description: "Stubbed openApplication",
-    parameters: {
-      type: "object",
-      properties: { name: { type: "string" } },
-      required: ["name"],
-    },
-    handler: async (args) => ({ ok: true, data: { opened: args.name } }),
-  };
-  const tools: ToolRegistry = { openApplication: stubOpenApplication };
-
   const { app } = createHttpServer({
     db,
     config,
-    tools,
+    tools: {},
     logger: console,
   });
 
@@ -52,27 +38,37 @@ async function run() {
 
     await request(app)
       .post("/v0/query")
-      .send({ sessionId: "s1", text: "hello" })
-      .expect(200)
+      .send({ sessionId: "s1" })
+      .expect(400)
       .expect((res) => {
-        if (res.body.mode !== "ANSWER") {
-          throw new Error("Expected ANSWER mode");
-        }
-        if (!res.body.ttsAudioBase64) {
-          throw new Error("Expected TTS stub");
+        if (res.body.error !== "text is required") {
+          throw new Error("Expected text validation error");
         }
       });
 
     await request(app)
       .post("/v0/query")
-      .send({ sessionId: "s1", text: "open app Calculator" })
+      .send({ sessionId: "s1", text: "start dictation" })
       .expect(200)
       .expect((res) => {
-        if (res.body.mode !== "ACTION") {
-          throw new Error("Expected ACTION mode");
+        if (res.body.mode !== "ANSWER") {
+          throw new Error("Expected ANSWER mode");
         }
-        if (!res.body.toolCalls || res.body.toolCalls.length === 0) {
-          throw new Error("Expected tool call");
+        if (!res.body.replyText?.includes("Dictation started")) {
+          throw new Error("Expected dictation start response");
+        }
+      });
+
+    await request(app)
+      .post("/v0/query")
+      .send({ sessionId: "s1", text: "stop dictation" })
+      .expect(200)
+      .expect((res) => {
+        if (res.body.mode !== "ANSWER") {
+          throw new Error("Expected ANSWER mode");
+        }
+        if (!res.body.replyText?.includes("Dictation stopped")) {
+          throw new Error("Expected dictation stop response");
         }
       });
 

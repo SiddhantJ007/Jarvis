@@ -23,6 +23,20 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Local recordings, screenshots, and generated media
+recordings/
+screenshots/
+media/generated/
+*.wav
+*.m4a
+*.mp3
+*.mp4
+*.mov
+*.webm
+*.heic
+*.aiff
+*.caf
+
 # Local Jarvis runtime data
 .jarvis-data/
 *.db
