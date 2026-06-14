@@ -1,97 +1,88 @@
 # Architecture
 
-Jarvis is a local-first macOS assistant made of two main parts:
+Jarvis is a local-first macOS assistant built as a Swift desktop app plus a TypeScript backend. The important architectural decision is that Jarvis is not just a wrapper around an LLM. It combines a conversation layer, deterministic tools, local memory, OCR, and macOS automation into one assistant loop.
 
-- a Swift/SwiftUI macOS app for the user-facing HUD, hotkeys, audio capture, and audio playback
-- a Node.js/TypeScript backend for routing, tools, LLM calls, OCR workflows, and local state
+## High-Level Architecture
 
-The core design principle is hybrid control: use deterministic code for actions that need predictable behavior, and use the LLM for language-heavy work such as summarization, rewriting, conversation, and flexible intent interpretation.
-
-## End-To-End Flow
-
-```text
-Voice / text / screen request
-  -> SwiftUI app and HUD
-  -> local Express API
-  -> STT, OCR, or text normalization
-  -> command router and context lookup
-  -> deterministic tool call and/or LLM reasoning
-  -> local action, generated answer, or transformed text
-  -> SQLite logging and memory updates
-  -> app response, optional TTS, HUD state update
+```mermaid
+flowchart TD
+    A[User voice, text, or screen request] --> B[Swift macOS App + HUD]
+    B --> C[Local Express API]
+    C --> D{Input Type}
+    D -->|Voice| E[OpenAI STT]
+    D -->|Text| F[Text Normalization]
+    D -->|Screen/OCR| G[Screen Capture + Vision OCR]
+    E --> H[Command / Conversation Layer]
+    F --> H
+    G --> H
+    H --> I[Intent + Action Router]
+    I --> J[SQLite Memory + RAG Context]
+    I --> K[Local Tool Registry]
+    I --> L[LLM Reasoning]
+    J --> L
+    L --> M[Response Generation]
+    K --> N[Local Action Execution]
+    M --> O[Text / TTS / Clipboard / HUD]
+    N --> O
+    O --> P[User]
 ```
 
-## Input Layer
+Text version:
 
-Jarvis accepts input from three places:
+```text
+User input
+  -> Jarvis command/conversation layer
+  -> intent/action router
+  -> tools, memory, screen context, or LLM reasoning
+  -> response generation or local action execution
+  -> HUD, TTS, text output, clipboard, or desktop action
+```
 
-- **Voice:** the macOS app records audio and sends it to `/v0/stt`
-- **Text:** typed commands are sent directly to `/v0/query`
-- **Screen/OCR:** selected screen workflows capture visible text and pass it through OCR before summarization or rewriting
+## Main Components
 
-The HUD shows the assistant state: idle, listening, or speaking. Global hotkeys control listening so the app can feel ambient rather than requiring a full chat window.
+### Input Layer
 
-## Speech-To-Text
+The input layer lives mostly in the Swift macOS app. It handles:
 
-Voice recordings are sent from the Swift app to the local backend. The backend uses OpenAI speech-to-text to convert audio into text. Once transcribed, the text follows the same routing path as typed commands.
+- typed text commands
+- voice recording
+- global hotkeys
+- idle/listening/speaking HUD state
+- sending audio or text to the backend
 
-This keeps the voice layer separate from the command layer: Jarvis does not need separate logic for “spoken” versus “typed” intent after transcription.
+Voice input is recorded locally, then sent to the local backend endpoint for transcription. Once audio becomes text, it follows the same command pipeline as typed input.
 
-## Command Router
+### Conversation Layer
 
-The TypeScript backend owns the main assistant pipeline. It combines:
+The conversation layer decides whether the user is asking for:
 
-- fuzzy phrase matching for common commands
-- deterministic routing for known tools
-- short-term session context
-- local preferences and memory
-- LLM calls when the input is ambiguous or language-heavy
+- a normal answer
+- a local action
+- a writing or summarization task
+- an agenda operation
+- a screen-aware workflow
+- a best-effort automation command
 
-Examples of deterministic routes include app opening, agenda operations, clipboard actions, time, and basic key commands. Examples of LLM-heavy routes include rewriting text, summarizing OCR output, and conversational responses.
+This layer is intentionally hybrid. Some requests are routed by deterministic patterns because they should behave predictably. Other requests use the LLM because they require language understanding or flexible reasoning.
 
-## LLM Reasoning
+### Intent Router
 
-OpenAI is used for:
+The TypeScript pipeline is the main router. It uses:
 
-- conversational answers
-- intent normalization when rules are not enough
-- summarizing screen or selected text
-- rewriting, polishing, and formalizing text
-- embeddings for lightweight memory/RAG hooks
-- speech-to-text and text-to-speech
+- fuzzy command matching
+- explicit command patterns
+- session context
+- local preferences
+- LLM planning where useful
+- fallback behavior for ambiguous requests
 
-The LLM does not directly operate macOS. It can help interpret or generate language, but the backend decides which local tool is safe and appropriate to run.
+Examples of deterministic routing include opening an app, reading the agenda, copying to clipboard, fetching time, and sending common keystrokes. Examples of LLM-driven work include screen summarization, rewriting selected text, and discussion-style responses.
 
-## Local Tools And Actions
+### Memory and RAG Layer
 
-Tools live under `src/tools/`. They cover workflows such as:
+Jarvis stores local state in SQLite through `better-sqlite3`.
 
-- opening or closing applications
-- opening URLs and tabs
-- agenda CRUD operations
-- copying, cutting, pasting, selecting, typing, and pressing keys
-- OCR screen reading
-- best-effort UI clicking and scrolling
-- news, weather, time, files, notes, and music helpers
-
-Desktop automation uses a combination of AppleScript, System Events, shell commands, OCR, accessibility APIs, and browser helpers. This is useful for a prototype, but not guaranteed across every app or website.
-
-## OCR And Screen Context
-
-For screen-reading workflows, Jarvis captures the screen and uses macOS Vision OCR to extract text. The extracted text can then be:
-
-- summarized
-- rewritten
-- used to locate visible UI text for a click attempt
-- passed into the LLM for higher-level interpretation
-
-OCR quality depends on screen visibility, contrast, layout, app permissions, and whether the relevant content is actually visible.
-
-## SQLite Memory And State
-
-Jarvis stores local data in SQLite through `better-sqlite3`.
-
-The database tracks:
+The database includes:
 
 - messages
 - action logs
@@ -100,35 +91,126 @@ The database tracks:
 - message embeddings
 - note embeddings
 
-This gives Jarvis continuity across commands, but it also means the local database may contain private information. Database files are ignored by git and should not be committed.
+The RAG layer indexes messages and notes using embeddings. It is lightweight, but it gives Jarvis a foundation for contextual recall instead of treating every request as a completely fresh conversation.
 
-## Output Layer
+### Task Manager
 
-Jarvis can return output through:
+Agenda management is implemented as local SQLite-backed task tracking. Jarvis can add, list, update, delete, move, and mark agenda items. This was one of the first workflows that made the project feel like an assistant instead of a chat interface because it required consistent state over time.
 
-- visible chat text in the app
+### Screen and Context Reader
+
+Screen-aware workflows use macOS screen capture and Apple Vision OCR. Jarvis can extract visible text and send it to the LLM for summarization, rewriting, or explanation.
+
+This flow depends on Screen Recording permission and visible screen content. It works best when the relevant text is readable and not hidden behind complex UI elements.
+
+### App Automation and Action Layer
+
+Local actions live under `src/tools/`. They include:
+
+- opening and closing apps
+- opening URLs
+- clicking UI text
+- OCR-based click fallback
+- scrolling
+- typing
+- copy, cut, paste, select, and new line
+- reading screen text
+- fetching weather/news/time
+- creating notes
+- controlling simple app workflows
+
+Jarvis uses AppleScript, System Events, shell commands, accessibility APIs, OCR, and browser helpers. This gives it practical desktop reach, but also makes it inherently more fragile than pure web code.
+
+### Response Generation Layer
+
+Jarvis can respond through:
+
+- visible text in the app
+- spoken audio using OpenAI TTS
+- clipboard output
+- direct desktop action
 - HUD state changes
-- spoken TTS audio
-- clipboard content
-- terminal logs for debugging
-- direct desktop actions
+- terminal/debug logs
 
-The intended user experience is quiet by default: successful actions should not require long spoken confirmations, while detailed errors should remain in logs.
+The intended interaction style is quiet and useful. Successful actions should not require long narration. Errors should be understandable for the user while detailed logs stay in the terminal.
 
-## Testing Boundary
+### Logging and Error Handling
 
-The public repo only tests headless backend behavior. It does not attempt to test:
+Jarvis logs messages and action results locally. Failure handling exists for:
 
-- microphone capture
-- OpenAI network calls
-- screen recording permissions
-- OCR accuracy
-- Accessibility permissions
-- AppleScript UI automation
-- real app/window state
+- missing or invalid input
+- missing permissions
+- app not found
+- screen text unavailable
+- OCR miss
+- LLM/API failure
+- ambiguous commands
+- unsupported operating systems
 
-Those workflows require manual testing on macOS and are documented as prototype-level behavior.
+For public/recruiter evaluation, this matters because assistant systems fail often. The important part is not pretending failure cannot happen, but designing a path to observe it and recover.
 
-## Known Limits
+### Test and CI Layer
 
-The most reliable workflows are direct commands, agenda operations, text rewriting, screen summarization, and simple app opening. Browser and desktop interaction are best-effort because real interfaces differ widely and can change without notice. Multistep workflows are intentionally limited and should be treated as an area for future hardening.
+The CI layer is intentionally small. It runs TypeScript compilation and a backend smoke test. It does not attempt to test macOS microphone, OCR, Accessibility, or UI automation because those require a real user session and explicit local permissions.
+
+## Data Flow: Conversation
+
+1. User sends a voice or text command.
+2. If voice, Jarvis transcribes it through STT.
+3. Jarvis normalizes the request.
+4. Jarvis checks deterministic routes and recent context.
+5. If needed, Jarvis retrieves relevant memory/RAG context.
+6. Jarvis generates a response or action plan.
+7. Jarvis returns the answer through text, TTS, or HUD state.
+
+## Data Flow: Screen Summarization
+
+1. User asks Jarvis to summarize visible content.
+2. Jarvis uses user-granted Screen Recording permission.
+3. A screenshot is captured locally.
+4. Apple Vision OCR extracts visible text.
+5. The extracted text is sent through the summarization prompt.
+6. Jarvis returns a concise summary to the user.
+
+## Data Flow: Desktop Automation
+
+1. User gives a command such as "open Word" or "click Blank Document."
+2. Jarvis identifies the target app/action.
+3. Jarvis executes the action through local tools.
+4. The result is logged locally.
+5. Jarvis either stays quiet on success or reports a short failure message.
+
+## Local-First Design
+
+Jarvis runs locally because the core product idea depends on local context:
+
+- which app is open
+- what text is visible on screen
+- what the user is saying into the microphone
+- what local actions macOS allows
+- what preferences and agenda items are stored locally
+
+A cloud deployment would remove the most interesting part of the project: AI connected to real desktop workflows.
+
+## Failure Handling
+
+Jarvis handles common failure cases defensively:
+
+- **Missing permissions:** Screen/OCR or Accessibility actions may fail until the user grants permission.
+- **App not found:** app launch tools return a structured failure instead of silently breaking.
+- **Screen context unavailable:** summarization can fail if OCR cannot read useful text.
+- **LLM/API failure:** deterministic tools should still work when possible; language-heavy features need API availability.
+- **Ambiguous commands:** the router attempts fuzzy matching, then falls back to LLM interpretation or a short failure response.
+
+## Future Architecture
+
+The current architecture proves the assistant loop. The next version should harden it:
+
+- stronger planner/executor loop
+- richer tool registry with schemas and permissions
+- explicit confirmation layer for risky actions
+- better observation after each action
+- local model support for privacy-sensitive workflows
+- memory management UI
+- encrypted memory store
+- better telemetry for debugging without exposing user data

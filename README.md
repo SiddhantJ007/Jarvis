@@ -1,76 +1,88 @@
 # Jarvis
 
-**Local-first macOS AI assistant prototype with voice I/O, OCR screen context, LLM reasoning, SQLite memory, and desktop automation.**
+**Jarvis is a local desktop assistant prototype designed to understand context, remember preferences, and perform actions on the user's Mac with explicit permission.**
 
-Jarvis is a desktop assistant experiment built to go beyond a normal chat interface. It can listen to voice commands, speak back, read text from the screen, summarize or rewrite content, manage a local agenda, and trigger practical macOS actions through a local backend.
+Jarvis is a local-first AI desktop assistant for macOS, inspired by the idea of a personalized operating-system-level assistant. It supports conversation, daily task tracking, screen-aware summarization, writing assistance, app launching, and best-effort workflow automation through user-granted local permissions.
 
-This is intentionally a local prototype, not a deployed web app. Some workflows are reliable, while deeper browser/app automation is best-effort because it depends on macOS permissions, focused windows, app UI structure, and screen state.
+Because Jarvis depends on local Mac permissions, screen context, microphone input, and desktop automation, it is not deployed on Vercel, Render, AWS, or any public cloud host. The best way to evaluate it is through the local demo video and the source code in this repository.
 
 ## Demo
 
-A short walkthrough video is available here:
+Demo video:
 
 [![Project Jarvis Demo Video](https://img.youtube.com/vi/uISCi_UVRec/0.jpg)](https://youtu.be/uISCi_UVRec)
 
-This demo shows Jarvis running locally and demonstrates the assistant workflow, including voice interaction, OCR/document input, summarization, rewriting, and task-style AI responses.
+The demo shows Jarvis running locally on macOS. It walks through the assistant-style flow: voice interaction, document/screen context, summarization, rewriting, and task-style responses. Screenshots can be added later, but the demo video is the main proof because the project is local and permission-driven.
 
 ## Why I Built It
 
-I built Jarvis to explore what an assistant-style AI system needs beyond a prompt box:
+The initial inspiration was the idea of a Jarvis-like assistant from Iron Man, but I wanted to approach it as a serious human-computer interaction and AI agent project rather than a fantasy interface.
 
-- messy voice and text input from a real user
-- deterministic logic for local actions that should be predictable
-- LLM reasoning for summarization, rewriting, conversation, and flexible intent
-- local memory/state for agenda items, preferences, messages, and action logs
-- a lightweight macOS HUD instead of a traditional full-screen chat UI
+I wanted to explore what a more personal, context-aware, and action-oriented assistant could look like beyond traditional voice assistants. Most assistants can answer questions or trigger a few predefined commands, but they often feel disconnected from the work happening on the actual computer. My goal was to build something that could listen, remember, read visible context, help with writing, and take useful local actions.
 
-The project became an exercise in deciding when to use AI and when not to. Opening an app, pressing a key, or updating an agenda item should be handled deterministically. Summarizing a screen, rewriting selected text, or carrying a discussion benefits from an LLM.
+The most important learning for me was that a useful assistant cannot be only an LLM. It needs a system around it: deterministic tools for actions, memory for continuity, OCR for screen context, safety boundaries for permissions, and a user experience that knows when to stay quiet.
 
-## Key Features
+The project vision is documented in [docs/VISION.md](docs/VISION.md). The build process and personal engineering notes are in [docs/BUILD_NOTES.md](docs/BUILD_NOTES.md).
 
-- Voice input with OpenAI speech-to-text
-- Spoken responses with OpenAI text-to-speech
-- Siri-like macOS HUD with listening/speaking/idle states
-- Open and quit local macOS applications
-- Open URLs and basic browser workflows
-- Best-effort clicking, scrolling, typing, copy, paste, cut, and selection
-- OCR-based screen reading and screen summarization
-- Rewrite, polish, formalize, or improve selected/screen text
-- Daily agenda: add, read, update, delete, move, and mark items
-- Dictation mode for writing into apps like Notes or Word
-- Copy the latest Jarvis response to the clipboard
-- Current time, news, and weather workflows
-- Jokes, facts, and short conversational answers
-- Local SQLite-backed messages, actions, preferences, agenda, and memory hooks
+## Core Capabilities
 
-## Architecture Overview
+- **Conversational AI assistant:** answers questions, discusses topics, explains ideas, and keeps short-term conversational context.
+- **Daily agenda:** add, read, update, delete, move, and mark agenda items in local SQLite storage.
+- **Memory and preference recall:** stores local messages, preferences, action logs, agenda items, and embedding-based recall hooks.
+- **RAG-based contextual recall:** indexes messages and notes with embeddings for lightweight retrieval when relevant.
+- **App launching and closing:** opens local macOS applications and supports close/sign-off style commands.
+- **Screen/text summarization:** reads visible screen text through OCR and summarizes it through the LLM.
+- **Writing assistance:** rewrites, polishes, formalizes, and improves selected or screen-visible text.
+- **Dictation mode:** types spoken text into apps such as Notes or Word, with basic punctuation handling.
+- **Weather, time, news, jokes, and facts:** supports practical assistant queries through local tools and APIs.
+- **Mac workflow automation:** best-effort click, scroll, type, copy, cut, paste, select, and tab/application actions.
+- **Accessibility-enabled interaction:** performs local actions only inside the boundaries of implemented tools and user-granted macOS permissions.
+- **HUD interface:** uses a small SwiftUI/AppKit overlay to show idle, listening, and speaking states.
 
-Jarvis is split into a Swift macOS app and a local TypeScript backend.
-
-```text
-User voice/text/screen request
-  -> SwiftUI macOS app + HUD
-  -> local Express backend
-  -> STT / OCR / text normalization
-  -> deterministic command router and/or LLM reasoning
-  -> local tools: apps, agenda, clipboard, OCR, browser, files, weather/news
-  -> SQLite logging and memory/state
-  -> text response, optional TTS audio, HUD status update
-```
-
-The model does not directly control the computer. The backend decides whether a request should call a local tool, ask the LLM for language work, or combine both.
-
-More detail is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+More detail is in [docs/CAPABILITIES.md](docs/CAPABILITIES.md). Memory and retrieval are covered in [docs/MEMORY_RAG.md](docs/MEMORY_RAG.md).
 
 ## Tech Stack
 
 - **macOS app:** Swift, SwiftUI, AppKit, AVFoundation
 - **Local backend:** Node.js, TypeScript, Express
-- **Database:** SQLite with `better-sqlite3`
-- **AI:** OpenAI chat completions, embeddings, Whisper STT, TTS
-- **Screen/OCR:** macOS screenshot capture and Apple Vision OCR
-- **Automation:** AppleScript, System Events, shell commands, Chrome remote debugging helpers
-- **Testing:** TypeScript build plus headless backend smoke test
+- **Package/runtime tooling:** npm, Swift Package Manager
+- **Database/local state:** SQLite with `better-sqlite3`
+- **AI APIs:** OpenAI chat completions, embeddings, speech-to-text, and text-to-speech
+- **OCR/screen context:** macOS screenshot capture and Apple Vision OCR
+- **Automation:** AppleScript, macOS System Events, shell commands, Chrome remote debugging helpers
+- **Testing/CI:** TypeScript build, headless backend smoke test, GitHub Actions for Node-only checks
+
+## Architecture
+
+At a high level, Jarvis follows this loop:
+
+```text
+Voice/text/screen input
+  -> Swift macOS app and HUD
+  -> local TypeScript backend
+  -> command router, memory, OCR, and LLM reasoning
+  -> local tools/actions or generated answer
+  -> SQLite logging/state
+  -> text response, TTS audio, clipboard output, or desktop action
+```
+
+The LLM helps with interpretation, writing, summarization, and conversation. It does not directly control the machine. Local tools execute actions through explicit code paths.
+
+Read the technical breakdown in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Workflow examples are documented in [docs/AUTOMATION_WORKFLOWS.md](docs/AUTOMATION_WORKFLOWS.md), and major tradeoffs are explained in [docs/ENGINEERING_DECISIONS.md](docs/ENGINEERING_DECISIONS.md).
+
+## Local-First Design
+
+Jarvis is local-first by design. It needs to run on the user's Mac because its core features depend on:
+
+- microphone input
+- local app/window state
+- screen context
+- user-granted macOS Accessibility permissions
+- user-granted Screen Recording permissions
+- local SQLite memory and preferences
+- desktop automation through AppleScript/System Events
+
+That is why the portfolio format is GitHub plus demo video, not a public web deployment. A hosted web app would not be able to honestly show the main thing Jarvis proves: connecting AI reasoning to real local desktop workflows.
 
 ## Local Setup
 
@@ -80,7 +92,7 @@ Prerequisites:
 - Node.js and npm
 - Xcode Command Line Tools / Swift toolchain
 - OpenAI API key
-- macOS permissions listed below
+- macOS permissions listed in [docs/PERMISSIONS.md](docs/PERMISSIONS.md)
 
 Install and build the backend:
 
@@ -94,8 +106,6 @@ Create a local `.env` file from `.env.example`:
 ```bash
 cp .env.example .env
 ```
-
-Fill in the required local values. Do not commit `.env`.
 
 Start the backend:
 
@@ -136,17 +146,6 @@ TTS_STUB=0
 - `TTS_DISABLED`: disables spoken output when enabled
 - `TTS_STUB`: returns stubbed TTS output for tests/dev checks
 
-## Required macOS Permissions
-
-Jarvis may need these permissions depending on the command:
-
-- **Microphone:** voice input
-- **Accessibility:** clicking, typing, keyboard shortcuts, app control
-- **Screen Recording:** OCR and screen summarization
-- **Automation:** AppleScript/System Events control of apps
-
-These permissions are configured in macOS System Settings. Without them, voice, OCR, and UI automation may fail even if the backend is running.
-
 ## Example Commands
 
 - "Open Microsoft Word."
@@ -162,50 +161,67 @@ These permissions are configured in macOS System Settings. Without them, voice, 
 - "What do you think about cricket versus baseball?"
 - "Sign off."
 
-## Testing
+## Testing and CI
 
-The repository includes a lightweight backend smoke test that avoids microphone, OCR, Accessibility, and AppleScript UI automation.
+Jarvis includes lightweight test coverage for the backend path that can run headlessly:
 
 ```bash
-npm run build
-npm run smoke
+npm test
 ```
 
-The smoke test is intended for CI-safe backend verification only. Full assistant behavior still requires manual macOS testing because the core experience depends on local permissions, active windows, microphone input, and screen state.
+This runs TypeScript compilation and a backend smoke test. It intentionally does not test microphone capture, OCR, Accessibility permissions, AppleScript UI automation, or real app/window state because those require an actual macOS desktop session.
 
-## Privacy And Local-First Notes
+More detail:
 
-Jarvis runs as a local desktop prototype. API keys are loaded from local environment variables and should never be committed.
+- [docs/TESTING.md](docs/TESTING.md)
+- [docs/CI_CD.md](docs/CI_CD.md)
+- [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 
-Do not commit:
+## Security and Privacy
 
-- `.env`
-- local SQLite databases
-- `.jarvis-data/`
-- logs
-- recordings
-- screenshots
-- generated media
-- build artifacts
+Jarvis touches sensitive local capabilities, so the permission boundary is part of the design. It only accesses microphone, screen, Accessibility, and app automation capabilities when the user grants the required macOS permissions.
 
-Some commands may send text, voice audio, OCR output, selected text, or screen text to external APIs such as OpenAI, NewsAPI, OpenWeather, or Open-Meteo depending on the workflow. Review the code path before using private or sensitive information.
+Local runtime data, API keys, logs, recordings, screenshots, generated media, and SQLite databases are ignored by git and should not be committed.
 
-## Limitations
+More detail:
 
-- Local prototype, not production software
-- Not a cloud-hosted app and not designed for web deployment
-- Desktop/browser automation is best-effort
-- Behavior is not guaranteed across all apps, websites, layouts, or permission states
-- Not production security, privacy, or compliance software
-- Multistep workflows exist but are intentionally limited and still being hardened
-- Voice reliability depends on microphone quality, background noise, and TTS/listening coordination
+- [SECURITY.md](SECURITY.md)
+- [docs/PERMISSIONS.md](docs/PERMISSIONS.md)
 
-## Future Improvements
+## Current Limitations
 
-- Stronger multistep task planner with per-step confirmation and recovery
-- More reliable browser automation through structured page state where available
-- Better voice activity detection and speaker isolation
-- First-run onboarding for macOS permissions
-- More pure-function tests around routing, agenda logic, and text transformations
-- Packaged macOS app distribution instead of running through `swift run`
-- Clearer separation between prototype tools, runtime data, and production-safe modules
+The short version:
+
+- Local-only prototype, not a public hosted product
+- macOS-specific
+- Requires explicit user-granted permissions
+- Not packaged as a public production app yet
+- Not production security or privacy software
+- Desktop/browser automation is best-effort and not guaranteed across every app or website
+- Automated testing is intentionally limited for OS-level behavior
+- Multistep workflows exist, but they are not yet a fully reliable planner/executor loop
+
+The fuller version is in [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
+
+## Roadmap
+
+The long-term goal is to move Jarvis toward a safer, more capable desktop agent: better planning, better observation, better confirmations, stronger memory controls, and more reliable app/browser interaction.
+
+See [docs/ROADMAP.md](docs/ROADMAP.md).
+
+## Documentation Map
+
+- [docs/VISION.md](docs/VISION.md): why Jarvis exists
+- [docs/BUILD_NOTES.md](docs/BUILD_NOTES.md): how I approached the build
+- [docs/ENGINEERING_DECISIONS.md](docs/ENGINEERING_DECISIONS.md): major tradeoffs and decisions
+- [docs/DEMO_WALKTHROUGH.md](docs/DEMO_WALKTHROUGH.md): how to evaluate the demo video
+- [docs/CAPABILITIES.md](docs/CAPABILITIES.md): what Jarvis can do
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): system design and data flow
+- [docs/MEMORY_RAG.md](docs/MEMORY_RAG.md): memory and retrieval design
+- [docs/AUTOMATION_WORKFLOWS.md](docs/AUTOMATION_WORKFLOWS.md): local workflow examples
+- [docs/PERMISSIONS.md](docs/PERMISSIONS.md): required macOS permissions
+- [docs/TESTING.md](docs/TESTING.md): testing strategy
+- [docs/CI_CD.md](docs/CI_CD.md): CI boundaries
+- [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md): local setup/debugging help
+- [docs/LIMITATIONS.md](docs/LIMITATIONS.md): prototype boundaries
+- [docs/ROADMAP.md](docs/ROADMAP.md): future direction
