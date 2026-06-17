@@ -6,6 +6,8 @@
 
 Jarvis is a local-first macOS assistant, so the demo video is the main way to evaluate the user experience. A public hosted deployment would not show the core value because the assistant depends on local permissions, screen context, microphone input, and desktop automation.
 
+The README includes a custom demo preview image and a compact screenshot grid showing representative local workflows: dictation, browser/app interaction, app launching, and HUD state changes.
+
 ## What The Demo Shows
 
 - conversational interaction
@@ -14,6 +16,8 @@ Jarvis is a local-first macOS assistant, so the demo video is the main way to ev
 - local workflow automation
 - screen/text summarization
 - writing support
+- dictation into a local document
+- HUD listening/speaking states
 - daily agenda/task tracking
 - memory and personalization direction
 - assistant-like responses through a macOS desktop experience

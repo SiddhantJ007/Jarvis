@@ -10,9 +10,19 @@ Because Jarvis depends on local Mac permissions, screen context, microphone inpu
 
 Demo video:
 
-[![Project Jarvis Demo Video](https://img.youtube.com/vi/uISCi_UVRec/0.jpg)](https://youtu.be/uISCi_UVRec)
+[![Project Jarvis Demo Video](docs/assets/jarvis-demo-preview.png)](https://youtu.be/uISCi_UVRec)
 
-The demo shows Jarvis running locally on macOS. It walks through the assistant-style flow: voice interaction, document/screen context, summarization, rewriting, and task-style responses. Screenshots can be added later, but the demo video is the main proof because the project is local and permission-driven.
+The demo shows Jarvis running locally on macOS. It walks through the assistant-style flow: voice interaction, document/screen context, summarization, rewriting, and task-style responses. The video is the main proof because the project is local and permission-driven.
+
+### Screenshots
+
+| Voice dictation in Word | Browser/app interaction |
+| --- | --- |
+| <img src="docs/assets/jarvis-dictation.png" alt="Jarvis dictation mode writing into Microsoft Word" width="420"> | <img src="docs/assets/jarvis-browser-interaction.png" alt="Jarvis assisting with a browser workflow" width="420"> |
+
+| Opening local apps | HUD speaking state |
+| --- | --- |
+| <img src="docs/assets/jarvis-open-calculator.png" alt="Jarvis opening the macOS Calculator app" width="420"> | <img src="docs/assets/jarvis-speaking-hud.png" alt="Jarvis HUD showing speaking state" width="420"> |
 
 ## Why I Built It
 
