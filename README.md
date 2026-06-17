@@ -8,11 +8,9 @@ Because Jarvis depends on local Mac permissions, screen context, microphone inpu
 
 ## Demo
 
-Demo video:
-
 [![Project Jarvis Demo Video](docs/assets/jarvis-demo-preview.png)](https://youtu.be/uISCi_UVRec)
 
-The demo shows Jarvis running locally on macOS. It walks through the assistant-style flow: voice interaction, document/screen context, summarization, rewriting, and task-style responses. The video is the main proof because the project is local and permission-driven.
+The demo shows Jarvis running locally on macOS. It walks through the assistant-style flow: voice interaction, document/screen context, summarization, rewriting, and task-style responses.
 
 ### Screenshots
 
